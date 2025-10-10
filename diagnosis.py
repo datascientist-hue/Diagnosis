@@ -26,16 +26,21 @@ def load_and_map_data(primary_path, ctg_path):
         df['Volume in Tonnes'] = df['Qty in Ltrs/Kgs'] / 1000
         df['Fin Year'] = df['Fin Year'].astype(str)
         return df
-    except FileNotFoundError as e:
-        st.error(f"File not found: {e}. Please make sure both CSV files are in the correct path.")
-        return None
     except Exception as e:
-        st.error(f"An error occurred during data loading and mapping: {e}")
+        # Updated error message for deployment with Google Drive
+        st.error(f"Error loading data from Google Drive: {e}")
+        st.error("Please check if the file IDs are correct and if 'Anyone with the link' sharing is enabled for both files.")
         return None
 
 # --- MAIN APP ---
-primary_file_path = r'E:\Automation\primary.csv'
-ctg_file_path = r'E:\Automation\prod_ctg.csv'
+# --- PATHS MODIFIED FOR GOOGLE DRIVE DEPLOYMENT ---
+primary_file_id = '1JVnfLgB5nrQpQpAUjPXXzTnfWW2nkXOQ'
+ctg_file_id = '1VJtZmE52CU_w_mijc2-1ePOiHYuBMHYO'
+
+primary_file_path = f'https://drive.google.com/uc?export=download&id={primary_file_id}'
+ctg_file_path = f'https://drive.google.com/uc?export=download&id={ctg_file_id}'
+# -----------------------------------------------------------
+
 df_original = load_and_map_data(primary_file_path, ctg_file_path)
 
 if df_original is not None:
@@ -73,7 +78,7 @@ if df_original is not None:
     # --- TAB LAYOUT ---
     tab1, tab2, tab3, tab4 = st.tabs(["📉 Gaps & Frequency", "🧠 Investment Analysis", "✨ DB Evolution & Potential", "📦 Product Deep Dive"])
 
-    with tab1: # --- MODIFIED AS PER REQUEST ---
+    with tab1: # UNCHANGED
         st.subheader("Distributor Billing Gap, Frequency & Efficiency")
         billed_dbs_active = set(df_active['Cust Code'].unique())
         if not selected_jc_period: 
@@ -91,29 +96,21 @@ if df_original is not None:
         
         with col_gap:
             st.subheader(f"JC-wise Gaps")
-            # --- START OF MODIFICATION ---
             st.info("This chart shows gaps for all JC periods in the FY. The counts are dynamic to your DSM & Customer Class selection.")
 
             gap_data_dynamic = []
             
-            # The universe for the chart is the one filtered by DSM and Class (db_universe_dynamic)
             total_dbs_in_selection = db_universe_dynamic
             
-            # Loop through ALL available JC periods to keep the chart's x-axis static
             for period in sorted(available_jc_periods):
-                # Count billed DBs for each period, but only from within the selected universe (df_universe_base)
                 billed_in_jc_for_selection = df_universe_base[df_universe_base['JCPeriod'] == period]['Cust Code'].nunique()
-                
-                # Calculate the gap based on the selected universe size
                 gap_count = len(total_dbs_in_selection) - billed_in_jc_for_selection
-                
                 gap_data_dynamic.append({'JC Period': period, 'Gap Count': gap_count})
                 
             if gap_data_dynamic:
                 gap_df_dynamic = pd.DataFrame(gap_data_dynamic)
                 fig_gap_dynamic = px.bar(gap_df_dynamic, x='JC Period', y='Gap Count', title='Unbilled Distributors per JC Period (in selection)', text_auto=True)
                 st.plotly_chart(fig_gap_dynamic, use_container_width=True)
-            # --- END OF MODIFICATION ---
 
         with col_freq:
             st.subheader("Top Billed DBs - 360° View")
