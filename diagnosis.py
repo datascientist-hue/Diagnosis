@@ -295,34 +295,51 @@ if df_original is not None:
     with tab1:
         st.subheader("Distributor Billing Gap, Frequency & Efficiency")
         df_tab1_active = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriod'].isin(selected_jc_period))] if selected_jc_period else pd.DataFrame()
-        billed_dbs_active = set(df_tab1_active['Cust Code'].unique())
-        gap_dbs_active = db_universe_dynamic - billed_dbs_active
-        billing_efficiency = (len(billed_dbs_active) / len(db_universe_dynamic) * 100) if db_universe_dynamic else 0
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Total DBs (in selection)", len(db_universe_dynamic)); col2.metric("DBs Billed (in selected JCs)", len(billed_dbs_active)); col3.metric("DB Gaps (Not Billed)", len(gap_dbs_active)); col4.metric("Billing Efficiency", f"{billing_efficiency:.1f}%")
-        st.markdown("---")
-        col_gap, col_freq = st.columns(2)
-        with col_gap:
-            st.subheader(f"JC-wise Gaps")
-            st.info("This chart shows gaps for all JC periods in the FY for your base selection.")
-            gap_data_dynamic = []
-            for period in sorted(available_jc_periods):
-                billed_in_jc_for_selection = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriod'] == period)]['Cust Code'].nunique()
-                gap_count = len(db_universe_dynamic) - billed_in_jc_for_selection
-                gap_data_dynamic.append({'JC Period': period, 'Gap Count': gap_count})
-            if gap_data_dynamic:
-                gap_df_dynamic = pd.DataFrame(gap_data_dynamic)
-                fig_gap_dynamic = px.bar(gap_df_dynamic, x='JC Period', y='Gap Count', title='Unbilled Distributors per JC Period', text_auto=True)
-                st.plotly_chart(fig_gap_dynamic, use_container_width=True)
-        with col_freq:
-            st.subheader("Top Billed DBs - 360° View")
-            st.info("Ranked by invoice count, with their volume and portfolio width for the selected period.")
-            if not df_tab1_active.empty:
-                freq_df_enhanced = df_tab1_active.groupby('Cust Name').agg(Invoice_Count=('Inv Num', 'nunique'),Volume_Tonnes=('Volume in Tonnes', 'sum'),Category_Count=('Prod Ctg', 'nunique')).reset_index()
-                freq_df_enhanced = freq_df_enhanced.sort_values('Invoice_Count', ascending=False)
-                freq_df_enhanced['Volume_Tonnes'] = freq_df_enhanced['Volume_Tonnes'].map('{:,.2f}'.format)
-                st.dataframe(freq_df_enhanced.head(10), use_container_width=True)
-            else: st.info("Select JC Period(s) to see the analysis.")
+        
+        ### <<< FIX START >>> ###
+        # Add a check to ensure the dataframe is not empty before proceeding.
+        # This prevents the KeyError when no JC Period is selected.
+        if df_tab1_active.empty:
+            st.warning("Please select at least one JC Period from the sidebar to view this analysis.")
+        else:
+            billed_dbs_active = set(df_tab1_active['Cust Code'].unique())
+            gap_dbs_active = db_universe_dynamic - billed_dbs_active
+            billing_efficiency = (len(billed_dbs_active) / len(db_universe_dynamic) * 100) if db_universe_dynamic else 0
+            
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Total DBs (in selection)", len(db_universe_dynamic))
+            col2.metric("DBs Billed (in selected JCs)", len(billed_dbs_active))
+            col3.metric("DB Gaps (Not Billed)", len(gap_dbs_active))
+            col4.metric("Billing Efficiency", f"{billing_efficiency:.1f}%")
+            
+            st.markdown("---")
+            
+            col_gap, col_freq = st.columns(2)
+            with col_gap:
+                st.subheader(f"JC-wise Gaps")
+                st.info("This chart shows gaps for all JC periods in the FY for your base selection.")
+                gap_data_dynamic = []
+                for period in sorted(available_jc_periods):
+                    billed_in_jc_for_selection = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriod'] == period)]['Cust Code'].nunique()
+                    gap_count = len(db_universe_dynamic) - billed_in_jc_for_selection
+                    gap_data_dynamic.append({'JC Period': period, 'Gap Count': gap_count})
+                if gap_data_dynamic:
+                    gap_df_dynamic = pd.DataFrame(gap_data_dynamic)
+                    fig_gap_dynamic = px.bar(gap_df_dynamic, x='JC Period', y='Gap Count', title='Unbilled Distributors per JC Period', text_auto=True)
+                    st.plotly_chart(fig_gap_dynamic, use_container_width=True)
+            
+            with col_freq:
+                st.subheader("Top Billed DBs - 360° View")
+                st.info("Ranked by invoice count, with their volume and portfolio width for the selected period.")
+                # This check is now slightly redundant due to the main wrapper, but it's harmless.
+                if not df_tab1_active.empty:
+                    freq_df_enhanced = df_tab1_active.groupby('Cust Name').agg(Invoice_Count=('Inv Num', 'nunique'),Volume_Tonnes=('Volume in Tonnes', 'sum'),Category_Count=('Prod Ctg', 'nunique')).reset_index()
+                    freq_df_enhanced = freq_df_enhanced.sort_values('Invoice_Count', ascending=False)
+                    freq_df_enhanced['Volume_Tonnes'] = freq_df_enhanced['Volume_Tonnes'].map('{:,.2f}'.format)
+                    st.dataframe(freq_df_enhanced.head(10), use_container_width=True)
+                else: 
+                    st.info("Select JC Period(s) to see the analysis.") # This line is unlikely to be reached now.
+        ### <<< FIX END >>> ###
 
     with tab2:
         st.subheader("Distributor Investment Pattern Analysis")
