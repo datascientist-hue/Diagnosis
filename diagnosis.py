@@ -58,7 +58,7 @@ def load_data_from_ftp(_ftp_creds):
 
     except Exception as e:
         st.error(f"Error connecting to FTP or loading data: {e}")
-        st.error("Please check your credentials and file paths in the secrets.toml file.")
+        st.error("Please check your credentials and file paths in the .streamlit/secrets.toml file.")
         return None
 
 # --- MAIN APP ---
