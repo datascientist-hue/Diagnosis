@@ -42,7 +42,7 @@ def load_data_from_ftp(_ftp_creds):
         df = pd.merge(df_primary, df_ctg_map, on='ProductCategory', how='left')
         df['ProductCategory_Updated'].fillna(df['ProductCategory'], inplace=True)
         df.drop('ProductCategory', axis=1, inplace=True)
-        df.rename(columns={'ProductCategory_Updated': 'ProductCategory'}, inplace=True)
+        df.rename(columns={'Prod Ctg_Updated': 'ProductCategory'}, inplace=True)
         
         df['Inv Date'] = pd.to_datetime(df['Inv Date'], dayfirst=True, errors='coerce')
         key_cols = ['Cust Code', 'Cust Name', 'JCPeriod', 'WeekNum', 'DSM', 'ASM', 'CustomerClass', 'ProductCategory', 'Inv Num']
@@ -500,5 +500,6 @@ if df_original is not None:
                             not_billed_df_base['Other_Categories_Billed'] = 'None Billed in Selection'; not_billed_df_base['Other_Volume_Tonnes'] = '0.00'
                             st.dataframe(not_billed_df_base[['Cust Name', 'City', 'DSM', 'Other_Categories_Billed', 'Other_Volume_Tonnes']], use_container_width=True)
                     else: st.success(f"Excellent! All distributors in your selection have billed '{selected_category}'.")
+
 
 
