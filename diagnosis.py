@@ -36,8 +36,8 @@ def load_data_from_ftp(_ftp_creds):
         
         ftp.quit()
 
-        df_primary = pd.read_csv(primary_file_obj, encoding='latin1')
-        df_ctg_map = pd.read_csv(ctg_file_obj, encoding='latin1')
+        df_primary = pd.read_parquet(primary_file_obj)
+        df_ctg_map = pd.read_parquet(ctg_file_obj)
         
         df = pd.merge(df_primary, df_ctg_map, on='Prod Ctg', how='left')
         df['Prod Ctg_Updated'].fillna(df['Prod Ctg'], inplace=True)
@@ -500,3 +500,4 @@ if df_original is not None:
                             not_billed_df_base['Other_Categories_Billed'] = 'None Billed in Selection'; not_billed_df_base['Other_Volume_Tonnes'] = '0.00'
                             st.dataframe(not_billed_df_base[['Cust Name', 'City', 'DSM', 'Other_Categories_Billed', 'Other_Volume_Tonnes']], use_container_width=True)
                     else: st.success(f"Excellent! All distributors in your selection have billed '{selected_category}'.")
+
