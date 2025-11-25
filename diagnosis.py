@@ -45,10 +45,10 @@ def load_data_from_ftp(_ftp_creds):
         df.rename(columns={'Prod Ctg_Updated': 'ProductCategory'}, inplace=True)
         
         df['InvDate'] = pd.to_datetime(df['InvDate'], dayfirst=True, errors='coerce')
-        key_cols = ['Cust Code', 'Cust Name', 'JCPeriod', 'WeekNum', 'DSM', 'ASM', 'CustomerClass', 'ProductCategory', 'Inv Num']
+        key_cols = ['BP Code', 'BP Name', 'JCPeriodNum', 'WeekNum', 'DSM', 'ASM', 'CustomerClass', 'ProductCategory', 'InvNum']
         df.dropna(subset=key_cols, inplace=True)
         
-        df['JCPeriod'] = df['JCPeriod'].astype(int)
+        df['JCPeriodNum'] = df['JCPeriodNum'].astype(int)
         df['WeekNum'] = df['WeekNum'].astype(int)
         df['Qty in Ltrs/Kgs'] = pd.to_numeric(df['Qty in Ltrs/Kgs'], errors='coerce').fillna(0)
         df['Volume in Tonnes'] = df['Qty in Ltrs/Kgs'] / 1000
@@ -73,7 +73,7 @@ if df_original is not None:
     available_fin_years = sorted(df_original['Fin Year'].unique(), reverse=True)
     selected_fin_year = st.sidebar.selectbox('Select Financial Year', options=available_fin_years)
     df_fy_filtered = df_original[df_original['Fin Year'] == selected_fin_year]
-    available_jc_periods = sorted(df_fy_filtered['JCPeriod'].unique())
+    available_jc_periods = sorted(df_fy_filtered['JCPeriodNum'].unique())
     selected_jc_period = st.sidebar.multiselect('Filter by JC Period(s)', options=available_jc_periods, default=[])
     
     df_pre_filter = df_original.copy()
@@ -95,13 +95,13 @@ if df_original is not None:
     if selected_cust_class:
         df_pre_filter = df_pre_filter[df_pre_filter['CustomerClass'].isin(selected_cust_class)]
 
-    available_distributors = sorted(df_pre_filter['Cust Name'].unique())
+    available_distributors = sorted(df_pre_filter['BP Name'].unique())
     selected_distributor = st.sidebar.multiselect('Filter by Distributor', options=available_distributors, default=[])
     if selected_distributor:
-        df_pre_filter = df_pre_filter[df_pre_filter['Cust Name'].isin(selected_distributor)]
+        df_pre_filter = df_pre_filter[df_pre_filter['BP Name'].isin(selected_distributor)]
 
     df_universe_base = df_pre_filter
-    db_universe_dynamic = set(df_universe_base['Cust Code'].unique())
+    db_universe_dynamic = set(df_universe_base['BP Code'].unique())
     
     tab0, tab1, tab2, tab3, tab4 = st.tabs(["📊 Descriptive", "📉 Gaps & Frequency", "🧠 Investment Analysis", "✨ DB Evolution & Potential", "📦 Product Deep Dive"])
     
@@ -114,7 +114,7 @@ if df_original is not None:
                 if df.empty: return {'value': 0, 'volume': 0, 'db_count': 0}
                 total_value = df['Net Value'].sum()
                 total_volume = df['Volume in Tonnes'].sum()
-                num_dbs = df['Cust Code'].nunique()
+                num_dbs = df['BP Code'].nunique()
                 return {'value': total_value, 'volume': total_volume, 'db_count': num_dbs}
 
             # --- DATA PREPARATION FOR ALL SECTIONS ---
@@ -127,7 +127,7 @@ if df_original is not None:
             if selected_asm: df_yoy_base = df_yoy_base[df_yoy_base['ASM'].isin(selected_asm)]
             if selected_dsm: df_yoy_base = df_yoy_base[df_yoy_base['DSM'].isin(selected_dsm)]
             if selected_cust_class: df_yoy_base = df_yoy_base[df_yoy_base['CustomerClass'].isin(selected_cust_class)]
-            if selected_distributor: df_yoy_base = df_yoy_base[df_yoy_base['Cust Name'].isin(selected_distributor)]
+            if selected_distributor: df_yoy_base = df_yoy_base[df_yoy_base['BP Name'].isin(selected_distributor)]
             
             # --- LAYOUT DEFINITION (MAIN AREA + BILLBOARD) ---
             main_col, billboard_col = st.columns([2.5, 1])
@@ -136,7 +136,7 @@ if df_original is not None:
                 st.markdown("<h3 style='text-align: center;'>Performance Billboard</h3>", unsafe_allow_html=True)
                 ytd_metrics_data_billboard = []
                 for year in yoy_years:
-                    df_ytd = df_yoy_base[(df_yoy_base['Fin Year'] == year) & (df_yoy_base['JCPeriod'].isin(ytd_jcs))]
+                    df_ytd = df_yoy_base[(df_yoy_base['Fin Year'] == year) & (df_yoy_base['JCPeriodNum'].isin(ytd_jcs))]
                     metrics = get_metrics(df_ytd)
                     metrics['Financial Year'] = year
                     ytd_metrics_data_billboard.append(metrics)
@@ -183,9 +183,9 @@ if df_original is not None:
 
                 if prior_jcs:
                     kpi3_col1, kpi3_col2 = st.columns(2)
-                    df_selected_period = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriod'].isin(selected_jc_period))]
+                    df_selected_period = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(selected_jc_period))]
                     metrics_selected = get_metrics(df_selected_period)
-                    df_prior_cumulative = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriod'].isin(prior_jcs))]
+                    df_prior_cumulative = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(prior_jcs))]
                     metrics_prior_total = get_metrics(df_prior_cumulative)
                     num_prior_jcs = len(prior_jcs)
                     metrics_avg_prior = {
@@ -217,13 +217,13 @@ if df_original is not None:
                 trend1, trend2 = st.columns(2)
                 with trend1:
                     st.markdown("##### Volume Trend Across JCs")
-                    jc_trend_data = df_universe_base[df_universe_base['Fin Year'] == selected_fin_year].groupby('JCPeriod')['Volume in Tonnes'].sum().reset_index()
-                    fig_jc_trend = px.line(jc_trend_data, x='JCPeriod', y='Volume in Tonnes', text='Volume in Tonnes', markers=True, title=f"JC-wise Volume Trend for {selected_fin_year}")
+                    jc_trend_data = df_universe_base[df_universe_base['Fin Year'] == selected_fin_year].groupby('JCPeriodNum')['Volume in Tonnes'].sum().reset_index()
+                    fig_jc_trend = px.line(jc_trend_data, x='JCPeriodNum', y='Volume in Tonnes', text='Volume in Tonnes', markers=True, title=f"JC-wise Volume Trend for {selected_fin_year}")
                     fig_jc_trend.update_traces(texttemplate='%{y:,.2f}', textposition='top center')
                     st.plotly_chart(fig_jc_trend, use_container_width=True)
                 with trend2:
                     st.markdown("##### Weekly Volume Breakdown")
-                    weekly_data = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriod'].isin(selected_jc_period))]
+                    weekly_data = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(selected_jc_period))]
                     weekly_trend_data = weekly_data.groupby('WeekNum')['Volume in Tonnes'].sum().reset_index().sort_values('WeekNum')
                     fig_weekly_trend = px.bar(weekly_trend_data, x='WeekNum', y='Volume in Tonnes', title=f"Weekly Volume in Selected JCs", text_auto='.2f')
                     st.plotly_chart(fig_weekly_trend, use_container_width=True)
@@ -235,7 +235,7 @@ if df_original is not None:
                 st.subheader(f"3. Period vs. Same Period Performance (YoY for JC(s) {', '.join(map(str, selected_jc_period))})")
                 period_metrics_data = []
                 for year in yoy_years:
-                    df_period = df_yoy_base[(df_yoy_base['Fin Year'] == year) & (df_yoy_base['JCPeriod'].isin(selected_jc_period))]
+                    df_period = df_yoy_base[(df_yoy_base['Fin Year'] == year) & (df_yoy_base['JCPeriodNum'].isin(selected_jc_period))]
                     metrics = get_metrics(df_period)
                     metrics['Financial Year'] = year
                     period_metrics_data.append(metrics)
@@ -254,7 +254,7 @@ if df_original is not None:
                 st.subheader(f"4. Cumulative YTD Performance (YoY for JCs 1-{max_jc})")
                 ytd_metrics_data = []
                 for year in yoy_years:
-                    df_ytd = df_yoy_base[(df_yoy_base['Fin Year'] == year) & (df_yoy_base['JCPeriod'].isin(ytd_jcs))]
+                    df_ytd = df_yoy_base[(df_yoy_base['Fin Year'] == year) & (df_yoy_base['JCPeriodNum'].isin(ytd_jcs))]
                     metrics = get_metrics(df_ytd)
                     metrics['Financial Year'] = year
                     ytd_metrics_data.append(metrics)
@@ -274,7 +274,7 @@ if df_original is not None:
                 ytd_df_for_table = pd.DataFrame(ytd_metrics_data).sort_values('Financial Year', ascending=False).reset_index(drop=True)
                 category_dfs = []
                 for year in yoy_years:
-                    df_ytd_cat = df_yoy_base[(df_yoy_base['Fin Year'] == year) & (df_yoy_base['JCPeriod'].isin(ytd_jcs))]
+                    df_ytd_cat = df_yoy_base[(df_yoy_base['Fin Year'] == year) & (df_yoy_base['JCPeriodNum'].isin(ytd_jcs))]
                     if not df_ytd_cat.empty:
                         cat_vol = df_ytd_cat.groupby('ProductCategory')['Volume in Tonnes'].sum().reset_index()
                         cat_vol.rename(columns={'Volume in Tonnes': f'Volume {year}'}, inplace=True)
@@ -294,7 +294,7 @@ if df_original is not None:
     
     with tab1:
         st.subheader("Distributor Billing Gap, Frequency & Efficiency")
-        df_tab1_active = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriod'].isin(selected_jc_period))] if selected_jc_period else pd.DataFrame()
+        df_tab1_active = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(selected_jc_period))] if selected_jc_period else pd.DataFrame()
         
         ### <<< FIX START >>> ###
         # Add a check to ensure the dataframe is not empty before proceeding.
@@ -302,7 +302,7 @@ if df_original is not None:
         if df_tab1_active.empty:
             st.warning("Please select at least one JC Period from the sidebar to view this analysis.")
         else:
-            billed_dbs_active = set(df_tab1_active['Cust Code'].unique())
+            billed_dbs_active = set(df_tab1_active['BP Code'].unique())
             gap_dbs_active = db_universe_dynamic - billed_dbs_active
             billing_efficiency = (len(billed_dbs_active) / len(db_universe_dynamic) * 100) if db_universe_dynamic else 0
             
@@ -320,7 +320,7 @@ if df_original is not None:
                 st.info("This chart shows gaps for all JC periods in the FY for your base selection.")
                 gap_data_dynamic = []
                 for period in sorted(available_jc_periods):
-                    billed_in_jc_for_selection = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriod'] == period)]['Cust Code'].nunique()
+                    billed_in_jc_for_selection = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'] == period)]['BP Code'].nunique()
                     gap_count = len(db_universe_dynamic) - billed_in_jc_for_selection
                     gap_data_dynamic.append({'JC Period': period, 'Gap Count': gap_count})
                 if gap_data_dynamic:
@@ -333,7 +333,7 @@ if df_original is not None:
                 st.info("Ranked by invoice count, with their volume and portfolio width for the selected period.")
                 # This check is now slightly redundant due to the main wrapper, but it's harmless.
                 if not df_tab1_active.empty:
-                    freq_df_enhanced = df_tab1_active.groupby('Cust Name').agg(Invoice_Count=('Inv Num', 'nunique'),Volume_Tonnes=('Volume in Tonnes', 'sum'),Category_Count=('ProductCategory', 'nunique')).reset_index()
+                    freq_df_enhanced = df_tab1_active.groupby('BP Name').agg(Invoice_Count=('InvNum', 'nunique'),Volume_Tonnes=('Volume in Tonnes', 'sum'),Category_Count=('ProductCategory', 'nunique')).reset_index()
                     freq_df_enhanced = freq_df_enhanced.sort_values('Invoice_Count', ascending=False)
                     freq_df_enhanced['Volume_Tonnes'] = freq_df_enhanced['Volume_Tonnes'].map('{:,.2f}'.format)
                     st.dataframe(freq_df_enhanced.head(10), use_container_width=True)
@@ -344,18 +344,18 @@ if df_original is not None:
     with tab2:
         st.subheader("Distributor Investment Pattern Analysis")
         st.info("Analyzes a DB's billing within your filtered selection to understand their focus.")
-        df_tab2_active = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriod'].isin(selected_jc_period))] if selected_jc_period else pd.DataFrame()
+        df_tab2_active = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(selected_jc_period))] if selected_jc_period else pd.DataFrame()
         if df_tab2_active.empty:
             st.warning("No billing data for the current selections. Please adjust your filters and select a JC Period.")
         else:
-            db_analysis_df = df_tab2_active.groupby(['Cust Name', 'City', 'DSM']).agg(Total_Volume_Tonnes=('Volume in Tonnes', 'sum'),Unique_Categories_Billed=('ProductCategory', 'nunique'),Product_Categories=('ProductCategory', lambda x: ', '.join(sorted(x.unique()))),).reset_index()
-            freq_df = df_tab2_active.groupby('Cust Name')['WeekNum'].nunique().reset_index()
+            db_analysis_df = df_tab2_active.groupby(['BP Name', 'City', 'DSM']).agg(Total_Volume_Tonnes=('Volume in Tonnes', 'sum'),Unique_Categories_Billed=('ProductCategory', 'nunique'),Product_Categories=('ProductCategory', lambda x: ', '.join(sorted(x.unique()))),).reset_index()
+            freq_df = df_tab2_active.groupby('BP Name')['WeekNum'].nunique().reset_index()
             freq_df.rename(columns={'WeekNum': 'Billing Frequency'}, inplace=True)
-            categories_per_jc = df_tab2_active.groupby(['Cust Name', 'JCPeriod'])['ProductCategory'].nunique().reset_index()
-            avg_cat_df = categories_per_jc.groupby('Cust Name')['ProductCategory'].mean().reset_index()
+            categories_per_jc = df_tab2_active.groupby(['BP Name', 'JCPeriodNum'])['ProductCategory'].nunique().reset_index()
+            avg_cat_df = categories_per_jc.groupby('BP Name')['ProductCategory'].mean().reset_index()
             avg_cat_df.rename(columns={'ProductCategory': 'Avg Categories Billed'}, inplace=True)
-            db_analysis_df = pd.merge(db_analysis_df, freq_df, on='Cust Name', how='left')
-            db_analysis_df = pd.merge(db_analysis_df, avg_cat_df, on='Cust Name', how='left')
+            db_analysis_df = pd.merge(db_analysis_df, freq_df, on='BP Name', how='left')
+            db_analysis_df = pd.merge(db_analysis_df, avg_cat_df, on='BP Name', how='left')
             db_analysis_df.fillna(0, inplace=True)
             total_categories_available = df_tab2_active['ProductCategory'].nunique()
             def assign_investment_profile(row):
@@ -366,7 +366,7 @@ if df_original is not None:
                 else: return "❓ Occasional Buyer"
             db_analysis_df['Investment Profile'] = db_analysis_df.apply(assign_investment_profile, axis=1)
             db_analysis_df['Avg Categories Billed'] = db_analysis_df['Avg Categories Billed'].map('{:,.2f}'.format)
-            display_cols = ['Cust Name', 'City', 'DSM', 'Investment Profile', 'Total_Volume_Tonnes', 'Unique_Categories_Billed', 'Avg Categories Billed', 'Billing Frequency', 'Product_Categories']
+            display_cols = ['BP Name', 'City', 'DSM', 'Investment Profile', 'Total_Volume_Tonnes', 'Unique_Categories_Billed', 'Avg Categories Billed', 'Billing Frequency', 'Product_Categories']
             st.dataframe(db_analysis_df.sort_values('Total_Volume_Tonnes', ascending=False)[display_cols], use_container_width=True)
             with st.expander("What do these Investment Profiles mean?"):
                 st.markdown("""- **⭐ Portfolio Champion**: A top-tier distributor who invests in almost all available product categories (**80%+ of total unique categories**).\n- **🚀 Expanding Player**: A significant growth driver who buys a wide range of products, billing **more than 4 categories on average** per active JC.\n- **🎯 Category Loyalist**: A highly consistent distributor who focuses exclusively on a **single product category**.\n- **🌱 Focused Buyer**: A distributor who concentrates on a specific set of products, billing **1 to 4 categories on average**. Potential to cross-sell.\n- **❓ Occasional Buyer**: A distributor who doesn't fit the other patterns.""")
@@ -376,7 +376,7 @@ if df_original is not None:
             with col1_chart:
                 profile_db_counts = db_analysis_df['Investment Profile'].value_counts().reset_index(); profile_db_counts.columns = ['Investment Profile', 'DB Count']; fig_db_count = px.bar(profile_db_counts, x='Investment Profile', y='DB Count', title='Count of DBs by Investment Profile', text_auto=True); st.plotly_chart(fig_db_count, use_container_width=True)
             with col2_chart:
-                merged_for_chart = pd.merge(df_tab2_active, db_analysis_df[['Cust Name', 'Investment Profile']], on='Cust Name', how='left'); profile_cat_counts = merged_for_chart.groupby('Investment Profile')['ProductCategory'].nunique().reset_index(); profile_cat_counts.columns = ['Investment Profile', 'Unique Product Categories']; fig_cat_count = px.bar(profile_cat_counts, x='Investment Profile', y='Unique Product Categories', title='Product Categories Touched by Profile', text_auto=True); st.plotly_chart(fig_cat_count, use_container_width=True)
+                merged_for_chart = pd.merge(df_tab2_active, db_analysis_df[['BP Name', 'Investment Profile']], on='BP Name', how='left'); profile_cat_counts = merged_for_chart.groupby('Investment Profile')['ProductCategory'].nunique().reset_index(); profile_cat_counts.columns = ['Investment Profile', 'Unique Product Categories']; fig_cat_count = px.bar(profile_cat_counts, x='Investment Profile', y='Unique Product Categories', title='Product Categories Touched by Profile', text_auto=True); st.plotly_chart(fig_cat_count, use_container_width=True)
             st.markdown("---")
             st.subheader("Actionable Segments")
             profile_filter = st.selectbox("Filter by Investment Profile to find opportunities:", options=['All'] + sorted(list(db_analysis_df['Investment Profile'].unique())))
@@ -393,15 +393,15 @@ if df_original is not None:
             st.markdown(f"#### 📈 **Portfolio Changers Analysis: JC {target_jc} vs JC {comparison_jc}**")
             st.info(f"This analysis identifies distributors who changed focus in **JC {target_jc}** compared to **JC {comparison_jc}**.")
             df_tab3_universe = df_universe_base[df_universe_base['Fin Year'] == selected_fin_year]
-            true_onboard_jc_map = df_tab3_universe.groupby('Cust Name')['JCPeriod'].min().to_dict()
-            df_past_activity = df_tab3_universe[df_tab3_universe['JCPeriod'] < comparison_jc]
-            last_active_jc_map = df_past_activity.groupby('Cust Name')['JCPeriod'].max().to_dict()
-            df_target = df_tab3_universe[df_tab3_universe['JCPeriod'] == target_jc]
-            df_comparison = df_tab3_universe[df_tab3_universe['JCPeriod'] == comparison_jc]
-            current_portfolios = df_target.groupby('Cust Name')['ProductCategory'].unique().apply(set).to_dict()
-            previous_portfolios = df_comparison.groupby('Cust Name')['ProductCategory'].unique().apply(set).to_dict()
+            true_onboard_jc_map = df_tab3_universe.groupby('BP Name')['JCPeriodNum'].min().to_dict()
+            df_past_activity = df_tab3_universe[df_tab3_universe['JCPeriodNum'] < comparison_jc]
+            last_active_jc_map = df_past_activity.groupby('BP Name')['JCPeriodNum'].max().to_dict()
+            df_target = df_tab3_universe[df_tab3_universe['JCPeriodNum'] == target_jc]
+            df_comparison = df_tab3_universe[df_tab3_universe['JCPeriodNum'] == comparison_jc]
+            current_portfolios = df_target.groupby('BP Name')['ProductCategory'].unique().apply(set).to_dict()
+            previous_portfolios = df_comparison.groupby('BP Name')['ProductCategory'].unique().apply(set).to_dict()
             change_analysis_results = []
-            active_dbs_target_jc = set(df_target['Cust Name'].unique())
+            active_dbs_target_jc = set(df_target['BP Name'].unique())
             for db_name in active_dbs_target_jc:
                 current_set = current_portfolios.get(db_name, set())
                 previous_set = previous_portfolios.get(db_name, set())
@@ -425,11 +425,11 @@ if df_original is not None:
                 st.markdown("---")
                 st.markdown("##### **Table 2: Portfolio Change Summary (Volume & Counts)**")
                 change_df_summary = change_df.copy()
-                volume_comparison_df = df_comparison.groupby('Cust Name')['Volume in Tonnes'].sum().reset_index().rename(columns={'Volume in Tonnes': f'Volume JC {comparison_jc} (T)'})
-                volume_target_df = df_target.groupby('Cust Name')['Volume in Tonnes'].sum().reset_index().rename(columns={'Volume in Tonnes': f'Volume JC {target_jc} (T)'})
-                change_df_summary = pd.merge(change_df_summary, volume_comparison_df, left_on='Distributor', right_on='Cust Name', how='left').fillna(0)
-                change_df_summary = pd.merge(change_df_summary, volume_target_df, left_on='Distributor', right_on='Cust Name', how='left').fillna(0)
-                change_df_summary.drop(columns=['Cust Name_x', 'Cust Name_y'], inplace=True, errors='ignore')
+                volume_comparison_df = df_comparison.groupby('BP Name')['Volume in Tonnes'].sum().reset_index().rename(columns={'Volume in Tonnes': f'Volume JC {comparison_jc} (T)'})
+                volume_target_df = df_target.groupby('BP Name')['Volume in Tonnes'].sum().reset_index().rename(columns={'Volume in Tonnes': f'Volume JC {target_jc} (T)'})
+                change_df_summary = pd.merge(change_df_summary, volume_comparison_df, left_on='Distributor', right_on='BP Name', how='left').fillna(0)
+                change_df_summary = pd.merge(change_df_summary, volume_target_df, left_on='Distributor', right_on='BP Name', how='left').fillna(0)
+                change_df_summary.drop(columns=['BP Name_x', 'BP Name_y'], inplace=True, errors='ignore')
                 change_df_summary['Ctg Count Before'] = change_df_summary['ProductCategory Before'].apply(lambda x: len(x.split(', ')) if x != "None" else 0)
                 change_df_summary['Ctg Count After'] = change_df_summary['Ctg Count Before'] + (change_df_summary['Newly Added'].apply(lambda x: len(x.split(', ')) if x != "None" else 0)) - (change_df_summary['Dropped'].apply(lambda x: len(x.split(', ')) if x != "None" else 0))
                 display_cols_summary = ['Distributor', f'Volume JC {comparison_jc} (T)', f'Volume JC {target_jc} (T)', 'Ctg Count Before', 'Ctg Count After', 'Change Type', 'Onboard JC']
@@ -449,7 +449,7 @@ if df_original is not None:
 
     with tab4:
         st.subheader("Product Category Deep Dive")
-        df_tab4_active = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriod'].isin(selected_jc_period))] if selected_jc_period else pd.DataFrame()
+        df_tab4_active = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(selected_jc_period))] if selected_jc_period else pd.DataFrame()
         if df_tab4_active.empty:
             st.warning("Please select JC Period(s) to analyze the product portfolio.")
         else:
@@ -458,7 +458,7 @@ if df_original is not None:
             st.info("This chart shows the number of distributors in your selection who did NOT bill each product category in the selected period.")
             gap_data = []
             for cat in all_categories:
-                billed_cat_dbs = set(df_tab4_active[df_tab4_active['ProductCategory'] == cat]['Cust Code'].unique())
+                billed_cat_dbs = set(df_tab4_active[df_tab4_active['ProductCategory'] == cat]['BP Code'].unique())
                 gap_count = len(db_universe_dynamic) - len(billed_cat_dbs)
                 gap_data.append({'Product Category': cat, 'Gap DB Count': gap_count})
             if gap_data:
@@ -468,7 +468,7 @@ if df_original is not None:
             st.markdown("#### Deep Dive Analysis for a Selected Category")
             selected_category = st.selectbox("Select a Product Category to analyze its performance and gaps", options=all_categories)
             if selected_category:
-                billed_this_cat_set = set(df_tab4_active[df_tab4_active['ProductCategory'] == selected_category]['Cust Code'].unique())
+                billed_this_cat_set = set(df_tab4_active[df_tab4_active['ProductCategory'] == selected_category]['BP Code'].unique())
                 not_billed_this_cat_set = db_universe_dynamic - billed_this_cat_set
                 billed_count, gap_count = len(billed_this_cat_set), len(not_billed_this_cat_set)
                 total_volume_for_cat = df_tab4_active[df_tab4_active['ProductCategory'] == selected_category]['Volume in Tonnes'].sum()
@@ -481,25 +481,26 @@ if df_original is not None:
                 with col_billed:
                     st.markdown(f"##### ✅ Billed '{selected_category}' ({billed_count} DBs)")
                     if billed_count > 0:
-                        billed_df = df_tab4_active[df_tab4_active['Cust Code'].isin(billed_this_cat_set) & (df_tab4_active['ProductCategory'] == selected_category)]
-                        billed_summary = billed_df.groupby(['Cust Name', 'City', 'DSM']).agg(Volume_of_Category_Tonnes=('Volume in Tonnes', 'sum'), Invoice_Count=('Inv Num', 'nunique')).reset_index().sort_values('Volume_of_Category_Tonnes', ascending=False)
+                        billed_df = df_tab4_active[df_tab4_active['BP Code'].isin(billed_this_cat_set) & (df_tab4_active['ProductCategory'] == selected_category)]
+                        billed_summary = billed_df.groupby(['BP Name', 'City', 'DSM']).agg(Volume_of_Category_Tonnes=('Volume in Tonnes', 'sum'), Invoice_Count=('InvNum', 'nunique')).reset_index().sort_values('Volume_of_Category_Tonnes', ascending=False)
                         st.dataframe(billed_summary, use_container_width=True)
                     else: st.info(f"No distributors billed '{selected_category}' in the current selection.")
                 with col_gap:
                     st.markdown(f"##### 🚫 Gaps for '{selected_category}' ({gap_count} DBs)")
                     if gap_count > 0:
-                        not_billed_df_base = df_universe_base[~df_universe_base['Cust Code'].isin(billed_this_cat_set)][['Cust Code', 'Cust Name', 'City', 'DSM']].drop_duplicates()
-                        other_billed_data = df_tab4_active[df_tab4_active['Cust Code'].isin(not_billed_this_cat_set)]
+                        not_billed_df_base = df_universe_base[~df_universe_base['BP Code'].isin(billed_this_cat_set)][['BP Code', 'BP Name', 'City', 'DSM']].drop_duplicates()
+                        other_billed_data = df_tab4_active[df_tab4_active['BP Code'].isin(not_billed_this_cat_set)]
                         if not other_billed_data.empty:
-                            other_billed_summary = other_billed_data.groupby('Cust Name').agg(Other_Categories_Billed=('ProductCategory', lambda x: ', '.join(sorted(x.unique()))), Other_Volume_Tonnes=('Volume in Tonnes', 'sum')).reset_index().sort_values('Other_Volume_Tonnes', ascending=False)
-                            final_gap_report = pd.merge(not_billed_df_base, other_billed_summary, on='Cust Name', how='left')
+                            other_billed_summary = other_billed_data.groupby('BP Name').agg(Other_Categories_Billed=('ProductCategory', lambda x: ', '.join(sorted(x.unique()))), Other_Volume_Tonnes=('Volume in Tonnes', 'sum')).reset_index().sort_values('Other_Volume_Tonnes', ascending=False)
+                            final_gap_report = pd.merge(not_billed_df_base, other_billed_summary, on='BP Name', how='left')
                             final_gap_report.fillna({'Other_Categories_Billed': 'None Billed in Selection', 'Other_Volume_Tonnes': 0}, inplace=True)
                             final_gap_report['Other_Volume_Tonnes'] = final_gap_report['Other_Volume_Tonnes'].map('{:,.2f}'.format)
-                            st.dataframe(final_gap_report[['Cust Name', 'City', 'DSM', 'Other_Categories_Billed', 'Other_Volume_Tonnes']], use_container_width=True)
+                            st.dataframe(final_gap_report[['BP Name', 'City', 'DSM', 'Other_Categories_Billed', 'Other_Volume_Tonnes']], use_container_width=True)
                         else:
                             not_billed_df_base['Other_Categories_Billed'] = 'None Billed in Selection'; not_billed_df_base['Other_Volume_Tonnes'] = '0.00'
-                            st.dataframe(not_billed_df_base[['Cust Name', 'City', 'DSM', 'Other_Categories_Billed', 'Other_Volume_Tonnes']], use_container_width=True)
+                            st.dataframe(not_billed_df_base[['BP Name', 'City', 'DSM', 'Other_Categories_Billed', 'Other_Volume_Tonnes']], use_container_width=True)
                     else: st.success(f"Excellent! All distributors in your selection have billed '{selected_category}'.")
+
 
 
 
