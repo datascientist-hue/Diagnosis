@@ -66,7 +66,7 @@ def load_data_from_ftp(_ftp_creds):
 
         df['PrimaryQtyInLtrs/Kgs'] = pd.to_numeric(df['PrimaryQtyInLtrs/Kgs'], errors='coerce').fillna(0)
         df['Volume in Tonnes'] = df['PrimaryQtyInLtrs/Kgs'] / 1000
-        df['Net Value'] = pd.to_numeric(df['Net Value'], errors='coerce').fillna(0)
+        df['PrimaryLineTotalBeforeTax'] = pd.to_numeric(df['PrimaryLineTotalBeforeTax'], errors='coerce').fillna(0)
         df['Fin Year'] = df['Fin Year'].astype(str)
         return df
 
@@ -126,7 +126,7 @@ if df_original is not None:
             # --- HELPER FUNCTIONS ---
             def get_metrics(df):
                 if df.empty: return {'value': 0, 'volume': 0, 'db_count': 0}
-                total_value = df['Net Value'].sum()
+                total_value = df['PrimaryLineTotalBeforeTax'].sum()
                 total_volume = df['Volume in Tonnes'].sum()
                 num_dbs = df['BP Code'].nunique()
                 return {'value': total_value, 'volume': total_volume, 'db_count': num_dbs}
@@ -507,4 +507,5 @@ if df_original is not None:
                             not_billed_df_base['Other_Categories_Billed'] = 'None Billed in Selection'; not_billed_df_base['Other_Volume_Tonnes'] = '0.00'
                             st.dataframe(not_billed_df_base[['BP Name', 'City', 'DSM', 'Other_Categories_Billed', 'Other_Volume_Tonnes']], use_container_width=True)
                     else: st.success(f"Excellent! All distributors in your selection have billed '{selected_category}'.")
+
 
