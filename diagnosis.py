@@ -44,12 +44,26 @@ def load_data_from_ftp(_ftp_creds):
         df.drop('ProductCategory', axis=1, inplace=True)
         df.rename(columns={'Prod Ctg_Updated': 'ProductCategory'}, inplace=True)
         
+        # --- FIX START: DATE PARSING AND WEEKNUM GENERATION ---
+        # Convert InvDate to datetime first
         df['InvDate'] = pd.to_datetime(df['InvDate'], dayfirst=True, errors='coerce')
+
+        # If WeekNum is missing in the file, derive it from the InvDate
+        if 'WeekNum' not in df.columns:
+            # generating week number from the Invoice Date
+            df['WeekNum'] = df['InvDate'].dt.isocalendar().week
+        
+        # Define key columns (ensure WeekNum is now present either from file or calculation)
         key_cols = ['BP Code', 'BP Name', 'JCPeriodNum', 'WeekNum', 'DSM', 'ASM', 'CustomerClass', 'ProductCategory', 'InvNum']
-        df.dropna(subset=key_cols, inplace=True)
+        
+        # Check if any other keys are missing before dropping to avoid errors
+        existing_keys = [col for col in key_cols if col in df.columns]
+        df.dropna(subset=existing_keys, inplace=True)
         
         df['JCPeriodNum'] = df['JCPeriodNum'].astype(int)
         df['WeekNum'] = df['WeekNum'].astype(int)
+        # --- FIX END ---
+
         df['Qty in Ltrs/Kgs'] = pd.to_numeric(df['Qty in Ltrs/Kgs'], errors='coerce').fillna(0)
         df['Volume in Tonnes'] = df['Qty in Ltrs/Kgs'] / 1000
         df['Net Value'] = pd.to_numeric(df['Net Value'], errors='coerce').fillna(0)
@@ -296,9 +310,6 @@ if df_original is not None:
         st.subheader("Distributor Billing Gap, Frequency & Efficiency")
         df_tab1_active = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(selected_jc_period))] if selected_jc_period else pd.DataFrame()
         
-        ### <<< FIX START >>> ###
-        # Add a check to ensure the dataframe is not empty before proceeding.
-        # This prevents the KeyError when no JC Period is selected.
         if df_tab1_active.empty:
             st.warning("Please select at least one JC Period from the sidebar to view this analysis.")
         else:
@@ -331,15 +342,11 @@ if df_original is not None:
             with col_freq:
                 st.subheader("Top Billed DBs - 360° View")
                 st.info("Ranked by invoice count, with their volume and portfolio width for the selected period.")
-                # This check is now slightly redundant due to the main wrapper, but it's harmless.
                 if not df_tab1_active.empty:
                     freq_df_enhanced = df_tab1_active.groupby('BP Name').agg(Invoice_Count=('InvNum', 'nunique'),Volume_Tonnes=('Volume in Tonnes', 'sum'),Category_Count=('ProductCategory', 'nunique')).reset_index()
                     freq_df_enhanced = freq_df_enhanced.sort_values('Invoice_Count', ascending=False)
                     freq_df_enhanced['Volume_Tonnes'] = freq_df_enhanced['Volume_Tonnes'].map('{:,.2f}'.format)
                     st.dataframe(freq_df_enhanced.head(10), use_container_width=True)
-                else: 
-                    st.info("Select JC Period(s) to see the analysis.") # This line is unlikely to be reached now.
-        ### <<< FIX END >>> ###
 
     with tab2:
         st.subheader("Distributor Investment Pattern Analysis")
@@ -500,9 +507,3 @@ if df_original is not None:
                             not_billed_df_base['Other_Categories_Billed'] = 'None Billed in Selection'; not_billed_df_base['Other_Volume_Tonnes'] = '0.00'
                             st.dataframe(not_billed_df_base[['BP Name', 'City', 'DSM', 'Other_Categories_Billed', 'Other_Volume_Tonnes']], use_container_width=True)
                     else: st.success(f"Excellent! All distributors in your selection have billed '{selected_category}'.")
-
-
-
-
-
-
