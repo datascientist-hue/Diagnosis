@@ -67,7 +67,7 @@ def load_data_from_ftp(_ftp_creds):
         df['PrimaryQtyInLtrs/Kgs'] = pd.to_numeric(df['PrimaryQtyInLtrs/Kgs'], errors='coerce').fillna(0)
         df['Volume in Tonnes'] = df['PrimaryQtyInLtrs/Kgs'] / 1000
         df['PrimaryLineTotalBeforeTax'] = pd.to_numeric(df['PrimaryLineTotalBeforeTax'], errors='coerce').fillna(0)
-        df['Fin Year'] = df['Fin Year'].astype(str)
+        df['Year'] = df['Year'].astype(str)
         return df
 
     except Exception as e:
@@ -84,15 +84,15 @@ if df_original is not None:
     
     st.sidebar.header("Control Panel")
     
-    available_fin_years = sorted(df_original['Fin Year'].unique(), reverse=True)
+    available_fin_years = sorted(df_original['Year'].unique(), reverse=True)
     selected_fin_year = st.sidebar.selectbox('Select Financial Year', options=available_fin_years)
-    df_fy_filtered = df_original[df_original['Fin Year'] == selected_fin_year]
+    df_fy_filtered = df_original[df_original['Year'] == selected_fin_year]
     available_jc_periods = sorted(df_fy_filtered['JCPeriodNum'].unique())
     selected_jc_period = st.sidebar.multiselect('Filter by JC Period(s)', options=available_jc_periods, default=[])
     
     df_pre_filter = df_original.copy()
     if selected_fin_year:
-        df_pre_filter = df_pre_filter[df_pre_filter['Fin Year'] == selected_fin_year]
+        df_pre_filter = df_pre_filter[df_pre_filter['Year'] == selected_fin_year]
 
     available_asms = sorted(df_pre_filter['ASM'].unique())
     selected_asm = st.sidebar.multiselect('Filter by ASM', options=available_asms, default=[])
@@ -132,7 +132,7 @@ if df_original is not None:
                 return {'value': total_value, 'volume': total_volume, 'db_count': num_dbs}
 
             # --- DATA PREPARATION FOR ALL SECTIONS ---
-            yoy_years = sorted(df_original['Fin Year'].unique(), reverse=True)[:3]
+            yoy_years = sorted(df_original['Year'].unique(), reverse=True)[:3]
             max_jc = max(selected_jc_period)
             ytd_jcs = list(range(1, max_jc + 1))
             
@@ -150,7 +150,7 @@ if df_original is not None:
                 st.markdown("<h3 style='text-align: center;'>Performance Billboard</h3>", unsafe_allow_html=True)
                 ytd_metrics_data_billboard = []
                 for year in yoy_years:
-                    df_ytd = df_yoy_base[(df_yoy_base['Fin Year'] == year) & (df_yoy_base['JCPeriodNum'].isin(ytd_jcs))]
+                    df_ytd = df_yoy_base[(df_yoy_base['Year'] == year) & (df_yoy_base['JCPeriodNum'].isin(ytd_jcs))]
                     metrics = get_metrics(df_ytd)
                     metrics['Financial Year'] = year
                     ytd_metrics_data_billboard.append(metrics)
@@ -197,9 +197,9 @@ if df_original is not None:
 
                 if prior_jcs:
                     kpi3_col1, kpi3_col2 = st.columns(2)
-                    df_selected_period = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(selected_jc_period))]
+                    df_selected_period = df_universe_base[(df_universe_base['Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(selected_jc_period))]
                     metrics_selected = get_metrics(df_selected_period)
-                    df_prior_cumulative = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(prior_jcs))]
+                    df_prior_cumulative = df_universe_base[(df_universe_base['Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(prior_jcs))]
                     metrics_prior_total = get_metrics(df_prior_cumulative)
                     num_prior_jcs = len(prior_jcs)
                     metrics_avg_prior = {
@@ -231,13 +231,13 @@ if df_original is not None:
                 trend1, trend2 = st.columns(2)
                 with trend1:
                     st.markdown("##### Volume Trend Across JCs")
-                    jc_trend_data = df_universe_base[df_universe_base['Fin Year'] == selected_fin_year].groupby('JCPeriodNum')['Volume in Tonnes'].sum().reset_index()
+                    jc_trend_data = df_universe_base[df_universe_base['Year'] == selected_fin_year].groupby('JCPeriodNum')['Volume in Tonnes'].sum().reset_index()
                     fig_jc_trend = px.line(jc_trend_data, x='JCPeriodNum', y='Volume in Tonnes', text='Volume in Tonnes', markers=True, title=f"JC-wise Volume Trend for {selected_fin_year}")
                     fig_jc_trend.update_traces(texttemplate='%{y:,.2f}', textposition='top center')
                     st.plotly_chart(fig_jc_trend, use_container_width=True)
                 with trend2:
                     st.markdown("##### Weekly Volume Breakdown")
-                    weekly_data = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(selected_jc_period))]
+                    weekly_data = df_universe_base[(df_universe_base['Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(selected_jc_period))]
                     weekly_trend_data = weekly_data.groupby('WeekNum')['Volume in Tonnes'].sum().reset_index().sort_values('WeekNum')
                     fig_weekly_trend = px.bar(weekly_trend_data, x='WeekNum', y='Volume in Tonnes', title=f"Weekly Volume in Selected JCs", text_auto='.2f')
                     st.plotly_chart(fig_weekly_trend, use_container_width=True)
@@ -249,7 +249,7 @@ if df_original is not None:
                 st.subheader(f"3. Period vs. Same Period Performance (YoY for JC(s) {', '.join(map(str, selected_jc_period))})")
                 period_metrics_data = []
                 for year in yoy_years:
-                    df_period = df_yoy_base[(df_yoy_base['Fin Year'] == year) & (df_yoy_base['JCPeriodNum'].isin(selected_jc_period))]
+                    df_period = df_yoy_base[(df_yoy_base['Year'] == year) & (df_yoy_base['JCPeriodNum'].isin(selected_jc_period))]
                     metrics = get_metrics(df_period)
                     metrics['Financial Year'] = year
                     period_metrics_data.append(metrics)
@@ -268,7 +268,7 @@ if df_original is not None:
                 st.subheader(f"4. Cumulative YTD Performance (YoY for JCs 1-{max_jc})")
                 ytd_metrics_data = []
                 for year in yoy_years:
-                    df_ytd = df_yoy_base[(df_yoy_base['Fin Year'] == year) & (df_yoy_base['JCPeriodNum'].isin(ytd_jcs))]
+                    df_ytd = df_yoy_base[(df_yoy_base['Year'] == year) & (df_yoy_base['JCPeriodNum'].isin(ytd_jcs))]
                     metrics = get_metrics(df_ytd)
                     metrics['Financial Year'] = year
                     ytd_metrics_data.append(metrics)
@@ -288,7 +288,7 @@ if df_original is not None:
                 ytd_df_for_table = pd.DataFrame(ytd_metrics_data).sort_values('Financial Year', ascending=False).reset_index(drop=True)
                 category_dfs = []
                 for year in yoy_years:
-                    df_ytd_cat = df_yoy_base[(df_yoy_base['Fin Year'] == year) & (df_yoy_base['JCPeriodNum'].isin(ytd_jcs))]
+                    df_ytd_cat = df_yoy_base[(df_yoy_base['Year'] == year) & (df_yoy_base['JCPeriodNum'].isin(ytd_jcs))]
                     if not df_ytd_cat.empty:
                         cat_vol = df_ytd_cat.groupby('ProductCategory')['Volume in Tonnes'].sum().reset_index()
                         cat_vol.rename(columns={'Volume in Tonnes': f'Volume {year}'}, inplace=True)
@@ -308,7 +308,7 @@ if df_original is not None:
     
     with tab1:
         st.subheader("Distributor Billing Gap, Frequency & Efficiency")
-        df_tab1_active = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(selected_jc_period))] if selected_jc_period else pd.DataFrame()
+        df_tab1_active = df_universe_base[(df_universe_base['Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(selected_jc_period))] if selected_jc_period else pd.DataFrame()
         
         if df_tab1_active.empty:
             st.warning("Please select at least one JC Period from the sidebar to view this analysis.")
@@ -331,7 +331,7 @@ if df_original is not None:
                 st.info("This chart shows gaps for all JC periods in the FY for your base selection.")
                 gap_data_dynamic = []
                 for period in sorted(available_jc_periods):
-                    billed_in_jc_for_selection = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'] == period)]['BP Code'].nunique()
+                    billed_in_jc_for_selection = df_universe_base[(df_universe_base['Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'] == period)]['BP Code'].nunique()
                     gap_count = len(db_universe_dynamic) - billed_in_jc_for_selection
                     gap_data_dynamic.append({'JC Period': period, 'Gap Count': gap_count})
                 if gap_data_dynamic:
@@ -351,7 +351,7 @@ if df_original is not None:
     with tab2:
         st.subheader("Distributor Investment Pattern Analysis")
         st.info("Analyzes a DB's billing within your filtered selection to understand their focus.")
-        df_tab2_active = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(selected_jc_period))] if selected_jc_period else pd.DataFrame()
+        df_tab2_active = df_universe_base[(df_universe_base['Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(selected_jc_period))] if selected_jc_period else pd.DataFrame()
         if df_tab2_active.empty:
             st.warning("No billing data for the current selections. Please adjust your filters and select a JC Period.")
         else:
@@ -399,7 +399,7 @@ if df_original is not None:
             target_jc, comparison_jc = max(selected_jc_period), max(selected_jc_period) - 1
             st.markdown(f"#### 📈 **Portfolio Changers Analysis: JC {target_jc} vs JC {comparison_jc}**")
             st.info(f"This analysis identifies distributors who changed focus in **JC {target_jc}** compared to **JC {comparison_jc}**.")
-            df_tab3_universe = df_universe_base[df_universe_base['Fin Year'] == selected_fin_year]
+            df_tab3_universe = df_universe_base[df_universe_base['Year'] == selected_fin_year]
             true_onboard_jc_map = df_tab3_universe.groupby('BP Name')['JCPeriodNum'].min().to_dict()
             df_past_activity = df_tab3_universe[df_tab3_universe['JCPeriodNum'] < comparison_jc]
             last_active_jc_map = df_past_activity.groupby('BP Name')['JCPeriodNum'].max().to_dict()
@@ -456,7 +456,7 @@ if df_original is not None:
 
     with tab4:
         st.subheader("Product Category Deep Dive")
-        df_tab4_active = df_universe_base[(df_universe_base['Fin Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(selected_jc_period))] if selected_jc_period else pd.DataFrame()
+        df_tab4_active = df_universe_base[(df_universe_base['Year'] == selected_fin_year) & (df_universe_base['JCPeriodNum'].isin(selected_jc_period))] if selected_jc_period else pd.DataFrame()
         if df_tab4_active.empty:
             st.warning("Please select JC Period(s) to analyze the product portfolio.")
         else:
@@ -507,5 +507,6 @@ if df_original is not None:
                             not_billed_df_base['Other_Categories_Billed'] = 'None Billed in Selection'; not_billed_df_base['Other_Volume_Tonnes'] = '0.00'
                             st.dataframe(not_billed_df_base[['BP Name', 'City', 'DSM', 'Other_Categories_Billed', 'Other_Volume_Tonnes']], use_container_width=True)
                     else: st.success(f"Excellent! All distributors in your selection have billed '{selected_category}'.")
+
 
 
