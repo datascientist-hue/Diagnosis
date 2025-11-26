@@ -64,8 +64,8 @@ def load_data_from_ftp(_ftp_creds):
         df['WeekNum'] = df['WeekNum'].astype(int)
         # --- FIX END ---
 
-        df['Qty in Ltrs/Kgs'] = pd.to_numeric(df['Qty in Ltrs/Kgs'], errors='coerce').fillna(0)
-        df['Volume in Tonnes'] = df['Qty in Ltrs/Kgs'] / 1000
+        df['PrimaryQtyInLtrs/Kgs'] = pd.to_numeric(df['PrimaryQtyInLtrs/Kgs'], errors='coerce').fillna(0)
+        df['Volume in Tonnes'] = df['PrimaryQtyInLtrs/Kgs'] / 1000
         df['Net Value'] = pd.to_numeric(df['Net Value'], errors='coerce').fillna(0)
         df['Fin Year'] = df['Fin Year'].astype(str)
         return df
@@ -507,3 +507,4 @@ if df_original is not None:
                             not_billed_df_base['Other_Categories_Billed'] = 'None Billed in Selection'; not_billed_df_base['Other_Volume_Tonnes'] = '0.00'
                             st.dataframe(not_billed_df_base[['BP Name', 'City', 'DSM', 'Other_Categories_Billed', 'Other_Volume_Tonnes']], use_container_width=True)
                     else: st.success(f"Excellent! All distributors in your selection have billed '{selected_category}'.")
+
